@@ -1,104 +1,408 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-    <title>Incident Reporter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#e94560">
+    <title>Incident Reporter Pro</title>
+    
+    <!-- Fonts & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
     <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
-    <div class="container">
-        <!-- ========== LOGIN SCREEN ========== -->
-        <div id="loginScreen" class="screen active">
-            <div class="logo">
+<body class="dark-mode">
+    <div class="app-container">
+        
+        <!-- ========== SPLASH SCREEN ========== -->
+        <div id="splashScreen" class="splash-screen">
+            <div class="splash-content">
                 <i class="fas fa-exclamation-triangle"></i>
-                <h2>Incident Reporter</h2>
-                <p>Citizen Reporting Solution</p>
+                <h1>Incident Reporter Pro</h1>
+                <p>Citizen Safety Network</p>
+                <div class="splash-spinner"></div>
             </div>
-            <div id="loginStatus" class="status-message"></div>
-            <input type="text" id="username" placeholder="Username" autocomplete="off">
-            <input type="password" id="password" placeholder="Password">
-            <button id="loginBtn" class="btn-primary">Login</button>
-            <button id="guestBtn" class="btn-secondary">Continue as Guest</button>
         </div>
-
+        
+        <!-- ========== ONBOARDING SCREENS ========== -->
+        <div id="onboardingScreen" class="screen">
+            <div class="onboarding-container">
+                <div class="onboarding-slide active" data-slide="0">
+                    <i class="fas fa-shield-alt"></i>
+                    <h2>Stay Safe Together</h2>
+                    <p>Report incidents and help your community stay informed</p>
+                </div>
+                <div class="onboarding-slide" data-slide="1">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <h2>Real-Time Location</h2>
+                    <p>Share exact incident locations with live maps</p>
+                </div>
+                <div class="onboarding-slide" data-slide="2">
+                    <i class="fas fa-camera"></i>
+                    <h2>Evidence Matters</h2>
+                    <p>Upload photos, videos, and audio evidence</p>
+                </div>
+                <div class="onboarding-slide" data-slide="3">
+                    <i class="fas fa-bell"></i>
+                    <h2>Instant Alerts</h2>
+                    <p>Get notified about incidents near you</p>
+                </div>
+                <div class="onboarding-dots">
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+                <button id="onboardingNextBtn" class="btn-primary">Next</button>
+                <button id="onboardingSkipBtn" class="btn-text">Skip</button>
+            </div>
+        </div>
+        
+        <!-- ========== LOGIN SCREEN ========== -->
+        <div id="loginScreen" class="screen">
+            <div class="auth-container">
+                <div class="logo">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h2>Incident Reporter Pro</h2>
+                    <p>Citizen Safety Network</p>
+                </div>
+                <div id="loginStatus" class="status-message"></div>
+                
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Username">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Password">
+                </div>
+                
+                <button id="loginBtn" class="btn-primary">Login</button>
+                <button id="registerBtn" class="btn-secondary">Create Account</button>
+                <button id="guestBtn" class="btn-text">Continue as Guest</button>
+                
+                <div class="social-login">
+                    <p>Or continue with</p>
+                    <div class="social-icons">
+                        <i class="fab fa-google"></i>
+                        <i class="fab fa-facebook"></i>
+                        <i class="fab fa-twitter"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========== REGISTER SCREEN ========== -->
+        <div id="registerScreen" class="screen">
+            <div class="auth-container">
+                <div class="logo">
+                    <i class="fas fa-user-plus"></i>
+                    <h2>Create Account</h2>
+                </div>
+                <div id="registerStatus" class="status-message"></div>
+                
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="regUsername" placeholder="Username">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="regEmail" placeholder="Email">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="regPassword" placeholder="Password">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-check-circle"></i>
+                    <input type="password" id="regConfirmPassword" placeholder="Confirm Password">
+                </div>
+                
+                <button id="registerSubmitBtn" class="btn-primary">Register</button>
+                <button id="backToLoginBtn" class="btn-text">Back to Login</button>
+            </div>
+        </div>
+        
         <!-- ========== MAIN APP SCREEN ========== -->
         <div id="appScreen" class="screen">
-            <!-- Tab Navigation -->
-            <div class="tabs">
-                <div class="tab active" data-tab="incidents">
-                    <i class="fas fa-list"></i>
-                    <span>Incidents</span>
+            
+            <!-- Modern Header -->
+            <div class="modern-header">
+                <div class="greeting">
+                    <h3>Hello, <span id="currentUserName">User</span>!</h3>
+                    <p id="userBadge"></p>
                 </div>
-                <div class="tab" data-tab="report">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Report</span>
-                </div>
-                <div class="tab" data-tab="myincidents">
-                    <i class="fas fa-user"></i>
-                    <span>My Reports</span>
+                <div class="header-actions">
+                    <div class="notification-badge" id="notificationBadge">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge-count" id="notificationCount">0</span>
+                    </div>
+                    <div class="theme-toggle" id="themeToggle">
+                        <i class="fas fa-moon"></i>
+                    </div>
+                    <div class="user-avatar" id="userAvatar">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <a href="#" id="viewProfileBtn"><i class="fas fa-user"></i> Profile</a>
+                            <a href="#" id="userSettingsBtn"><i class="fas fa-cog"></i> Settings</a>
+                            <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <!-- ===== INCIDENTS TAB ===== -->
-            <div id="incidentsTab" class="tab-content active">
+            
+            <!-- Stats Cards -->
+            <div class="stats-row">
+                <div class="stat-card-mini">
+                    <i class="fas fa-eye"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="liveIncidents">0</span>
+                        <span class="stat-label">Active Incidents</span>
+                    </div>
+                </div>
+                <div class="stat-card-mini">
+                    <i class="fas fa-users"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="liveUsers">0</span>
+                        <span class="stat-label">Online Now</span>
+                    </div>
+                </div>
+                <div class="stat-card-mini">
+                    <i class="fas fa-trophy"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="userPoints">0</span>
+                        <span class="stat-label">Your Points</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search Bar with Voice -->
+            <div class="search-container">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchInput" placeholder="Search incidents...">
-                </div>
-                <div id="categoryFilters" class="filters"></div>
-                <div id="incidentsList" class="incidents-list">
-                    <div class="loading">Loading incidents...</div>
+                    <button id="voiceSearchBtn" class="voice-btn"><i class="fas fa-microphone"></i></button>
                 </div>
             </div>
-
-            <!-- ===== REPORT TAB ===== -->
+            
+            <!-- Tab Navigation (Modern) -->
+            <div class="modern-tabs">
+                <div class="tab-item active" data-tab="feed">
+                    <i class="fas fa-newspaper"></i>
+                    <span>Feed</span>
+                </div>
+                <div class="tab-item" data-tab="map">
+                    <i class="fas fa-map"></i>
+                    <span>Map</span>
+                </div>
+                <div class="tab-item" data-tab="report">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Report</span>
+                </div>
+                <div class="tab-item" data-tab="analytics">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </div>
+                <div class="tab-item" data-tab="profile">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </div>
+            </div>
+            
+            <!-- ===== FEED TAB ===== -->
+            <div id="feedTab" class="tab-content active">
+                <div class="filter-bar">
+                    <div class="filter-chip active" data-cat="all">All</div>
+                    <div class="filter-chip" data-cat="nearby">📍 Nearby</div>
+                    <div class="filter-chip" data-cat="following">👥 Following</div>
+                    <div class="filter-chip" data-cat="trending">🔥 Trending</div>
+                </div>
+                <div class="sort-bar">
+                    <button class="sort-btn active" data-sort="newest"><i class="fas fa-clock"></i> Newest</button>
+                    <button class="sort-btn" data-sort="popular"><i class="fas fa-fire"></i> Popular</button>
+                    <button class="sort-btn" data-sort="nearby"><i class="fas fa-location-dot"></i> Nearby</button>
+                </div>
+                <div id="incidentsList" class="incidents-list">
+                    <div class="skeleton-loader">
+                        <div class="skeleton-card shimmer"></div>
+                        <div class="skeleton-card shimmer"></div>
+                        <div class="skeleton-card shimmer"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ===== MAP TAB ===== -->
+            <div id="mapTab" class="tab-content">
+                <div id="incidentMap" class="map-container"></div>
+                <div class="map-controls">
+                    <button id="zoomToUserBtn" class="map-btn"><i class="fas fa-location-dot"></i> My Location</button>
+                    <button id="heatmapToggleBtn" class="map-btn"><i class="fas fa-fire"></i> Heatmap</button>
+                    <button id="refreshMapBtn" class="map-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+                <div id="selectedIncidentInfo" class="selected-info"></div>
+            </div>
+            
+            <!-- ===== REPORT TAB (Enhanced) ===== -->
             <div id="reportTab" class="tab-content">
-                <form id="reportForm">
-                    <label>Incident Type</label>
-                    <select id="incidentCategory" required>
-                        <option value="">Select type</option>
-                        <option value="Accident">🚗 Accident</option>
-                        <option value="Fighting">👊 Fighting</option>
-                        <option value="Rioting">🔥 Rioting</option>
-                        <option value="Fire">🪵 Fire</option>
-                        <option value="Other">📌 Other</option>
-                    </select>
-                    
-                    <label>Description</label>
-                    <textarea id="incidentDesc" rows="4" placeholder="Describe what happened..." required></textarea>
-                    
-                    <label>Location</label>
-                    <div class="location-box" id="locationBox">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span id="locationStatus">Tap to get location</span>
+                <form id="reportForm" class="report-form">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Incident Type</label>
+                        <div class="category-grid">
+                            <label class="category-option">
+                                <input type="radio" name="category" value="Accident">
+                                <i class="fas fa-car-crash"></i> Accident
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="category" value="Fighting">
+                                <i class="fas fa-fist-raised"></i> Fighting
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="category" value="Rioting">
+                                <i class="fas fa-users"></i> Rioting
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="category" value="Fire">
+                                <i class="fas fa-fire"></i> Fire
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="category" value="Theft">
+                                <i class="fas fa-money-bill"></i> Theft
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="category" value="Medical">
+                                <i class="fas fa-heartbeat"></i> Medical
+                            </label>
+                        </div>
                     </div>
-                    <input type="hidden" id="lat">
-                    <input type="hidden" id="lng">
                     
-                    <label>Photo</label>
-                    <div id="photoPreview" class="photo-preview"></div>
-                    <div class="photo-buttons">
-                        <button type="button" id="takePhotoBtn" class="btn-secondary"><i class="fas fa-camera"></i> Take Photo</button>
-                        <button type="button" id="selectPhotoBtn" class="btn-secondary"><i class="fas fa-image"></i> Gallery</button>
+                    <div class="form-group">
+                        <label><i class="fas fa-heading"></i> Title</label>
+                        <input type="text" id="incidentTitle" placeholder="Brief title...">
                     </div>
-                    <input type="hidden" id="photoData">
                     
-                    <button type="button" id="submitBtn" class="btn-primary">Submit Incident</button>
+                    <div class="form-group">
+                        <label><i class="fas fa-align-left"></i> Description</label>
+                        <textarea id="incidentDesc" rows="4" placeholder="Describe what happened..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-chart-line"></i> Severity</label>
+                        <div class="severity-slider">
+                            <input type="range" id="severitySlider" min="1" max="4" value="2">
+                            <div class="severity-labels">
+                                <span>Low</span>
+                                <span>Medium</span>
+                                <span>High</span>
+                                <span>Critical</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Location</label>
+                        <div class="location-card" id="locationCard">
+                            <div class="location-status" id="locationStatus">
+                                <i class="fas fa-spinner fa-spin"></i> Detecting location...
+                            </div>
+                            <div id="locationPreview" class="location-preview"></div>
+                            <button type="button" id="refreshLocationBtn" class="btn-small">Refresh Location</button>
+                        </div>
+                        <input type="hidden" id="lat">
+                        <input type="hidden" id="lng">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-camera"></i> Media</label>
+                        <div class="media-grid" id="mediaGrid">
+                            <div class="media-upload-btn" id="takePhotoBtn">
+                                <i class="fas fa-camera"></i>
+                                <span>Take Photo</span>
+                            </div>
+                            <div class="media-upload-btn" id="selectPhotoBtn">
+                                <i class="fas fa-image"></i>
+                                <span>Gallery</span>
+                            </div>
+                            <div class="media-upload-btn" id="recordVideoBtn">
+                                <i class="fas fa-video"></i>
+                                <span>Record Video</span>
+                            </div>
+                            <div class="media-upload-btn" id="recordAudioBtn">
+                                <i class="fas fa-microphone"></i>
+                                <span>Audio Note</span>
+                            </div>
+                        </div>
+                        <div id="mediaPreview" class="media-preview"></div>
+                        <input type="hidden" id="mediaData">
+                        <input type="hidden" id="mediaType">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-tags"></i> Tags</label>
+                        <div class="tags-input">
+                            <input type="text" id="tagsInput" placeholder="Add tags (press Enter)">
+                            <div id="tagsContainer" class="tags-container"></div>
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="submitBtn" class="btn-primary btn-large">
+                        <i class="fas fa-paper-plane"></i> Submit Incident
+                    </button>
                 </form>
             </div>
-
-            <!-- ===== MY INCIDENTS TAB ===== -->
-            <div id="myincidentsTab" class="tab-content">
-                <div id="myIncidentsList" class="incidents-list">
-                    <div class="loading">Loading your reports...</div>
+            
+            <!-- ===== ANALYTICS TAB ===== -->
+            <div id="analyticsTab" class="tab-content">
+                <div class="analytics-header">
+                    <h3>Community Analytics</h3>
+                    <select id="analyticsTimeframe">
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                        <option value="year">Last Year</option>
+                    </select>
+                </div>
+                
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <canvas id="incidentChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="leaderboard">
+                    <h4><i class="fas fa-trophy"></i> Top Reporters</h4>
+                    <div id="leaderboardList" class="leaderboard-list"></div>
+                </div>
+                
+                <div class="hotspots">
+                    <h4><i class="fas fa-fire"></i> Current Hotspots</h4>
+                    <div id="hotspotsList" class="hotspots-list"></div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <script src="cordova.js"></script>
-    <script src="js/app.js"></script>
-</body>
-                    </html>
+            
+            <!-- ===== PROFILE TAB ===== -->
+            <div id="profileTab" class="tab-content">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">
+                        <i class="fas fa-user-circle"></i>
+                        <button id="changeAvatarBtn" class="avatar-edit"><i class="fas fa-camera"></i></button>
+                    </div>
+                    <h3 id="profileUsername">Username</h3>
+                    <p id="profileJoinDate">Member since</p>
+                </div>
+                
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <spa
