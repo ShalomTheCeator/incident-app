@@ -25,17 +25,17 @@ jobs:
       - name: Install Cordova
         run: npm install -g cordova
       
-      - name: Create and Build Cordova App
+      - name: Build Cordova App
         run: |
           # Create project
-          cordova create MyApp com.bincom.incidentapp "IncidentReporter"
+          cordova create app com.bincom.incidentapp "IncidentReporter"
           
           # Copy your files
-          cp -r www/* MyApp/www/
-          cp config.xml MyApp/
+          cp -r www/* app/www/
+          cp config.xml app/
           
           # Build
-          cd MyApp
+          cd app
           cordova platform add android
           cordova plugin add cordova-plugin-camera
           cordova plugin add cordova-plugin-geolocation
@@ -43,11 +43,18 @@ jobs:
           cordova plugin add cordova-plugin-vibration
           cordova build android
           
-          # Go back to root for artifact upload
+          # Find and show the APK location
+          echo "Looking for APK..."
+          find . -name "*.apk"
+          
+          # Go back
           cd ..
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: bincom-incident-app
-          path: MyApp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          name: incident-app
+          path: |
+            app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+            app/platforms/android/app/build/outputs/apk/debug/app.apk
+            **/platforms/android/**/*.apk
