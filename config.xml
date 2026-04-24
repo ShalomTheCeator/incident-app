@@ -5,22 +5,28 @@
         version="1.0.0">
     
     <name>Incident Reporter</name>
-    <description>Citizen Incident Reporting App</description>
-    <author email="your@email.com" href="http://bincom.net">Your Name</author>
+    <description>Citizen Incident Reporting App for Bincom Academy</description>
+    <author email="bincom@test.com">Student Name</author>
     
+    <!-- App Preferences -->
     <preference name="permissions" value="none" />
     <preference name="orientation" value="portrait" />
     <preference name="fullscreen" value="false" />
     <preference name="android-minSdkVersion" value="22" />
     <preference name="android-targetSdkVersion" value="33" />
     
+    <!-- Required Plugins for Test Requirements -->
     <plugin name="cordova-plugin-camera" />
     <plugin name="cordova-plugin-geolocation" />
     <plugin name="cordova-plugin-dialogs" />
+    <plugin name="cordova-plugin-vibration" />
     
+    <!-- Internet Access -->
     <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="geo:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="tel:*" />
     
 </widget>
