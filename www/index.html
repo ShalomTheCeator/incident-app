@@ -5,92 +5,100 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <title>Incident Reporter</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:Arial,sans-serif;background:#1a1a2e;color:#fff;}
-        .container{max-width:500px;margin:0 auto;background:#16213e;min-height:100vh;}
-        .screen{display:none;padding:20px;}
-        .screen.active{display:block;}
-        .logo{text-align:center;margin:40px 0;}
-        .logo i{font-size:60px;color:#e94560;}
-        h2{margin:10px 0;}
-        input,select,textarea{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none;background:#0f3460;color:#fff;}
-        button{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none;font-size:16px;font-weight:bold;}
-        .btn-primary{background:#e94560;color:#fff;}
-        .btn-secondary{background:#0f3460;color:#fff;}
-        .tabs{display:flex;background:#0f3460;}
-        .tab{flex:1;text-align:center;padding:12px;cursor:pointer;}
-        .tab.active{background:#e94560;border-radius:8px;}
-        .incident-card{background:#0f3460;padding:12px;margin:10px 0;border-radius:12px;}
-        .category{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;margin-bottom:8px;}
-        .Accident{background:#ff9800;}.Fighting{background:#f44336;}.Rioting{background:#9c27b0;}.Fire{background:#ff5722;}.Other{background:#607d8b;}
-        .location-box{background:#0f3460;padding:12px;border-radius:8px;margin:8px 0;display:flex;align-items:center;gap:10px;}
-        .photo-preview img{max-width:100%;border-radius:12px;margin:8px 0;}
-        .filter-chip{display:inline-block;padding:6px 12px;margin:4px;border-radius:20px;background:#0f3460;cursor:pointer;}
-        .filter-chip.active{background:#e94560;}
-        .status-message{padding:10px;margin:10px 0;border-radius:8px;text-align:center;}
-        .success{background:#4caf50;}.error{background:#f44336;}
-    </style>
+    <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<div class="container">
-    <!-- Login Screen -->
-    <div id="loginScreen" class="screen active">
-        <div class="logo">
-            <i class="fas fa-exclamation-triangle"></i>
-            <h2>Incident Reporter</h2>
-            <p>Citizen Reporting Solution</p>
-        </div>
-        <div id="loginStatus" class="status-message"></div>
-        <input type="text" id="username" placeholder="Username">
-        <input type="password" id="password" placeholder="Password">
-        <button id="loginBtn" class="btn-primary">Login</button>
-        <button id="guestBtn" class="btn-secondary">Continue as Guest</button>
-    </div>
-
-    <!-- Main App Screen -->
-    <div id="appScreen" class="screen">
-        <div class="tabs">
-            <div class="tab active" data-tab="incidents">📋 Incidents</div>
-            <div class="tab" data-tab="report">➕ Report</div>
-            <div class="tab" data-tab="myincidents">👤 My Reports</div>
-        </div>
-
-        <div id="incidentsTab" class="tab-content active">
-            <input type="text" id="searchInput" placeholder="Search...">
-            <div id="categoryFilters"></div>
-            <div id="incidentsList"></div>
-        </div>
-
-        <div id="reportTab" class="tab-content">
-            <select id="incidentCategory">
-                <option value="">Select Type</option>
-                <option value="Accident">🚗 Accident</option>
-                <option value="Fighting">👊 Fighting</option>
-                <option value="Rioting">🔥 Rioting</option>
-                <option value="Fire">🪵 Fire</option>
-                <option value="Other">📌 Other</option>
-            </select>
-            <textarea id="incidentDesc" rows="4" placeholder="Describe the incident..."></textarea>
-            <div class="location-box" id="locationBox">
-                <i class="fas fa-map-marker-alt"></i>
-                <span id="locationStatus">Tap to get location</span>
+    <div class="container">
+        <!-- ========== LOGIN SCREEN ========== -->
+        <div id="loginScreen" class="screen active">
+            <div class="logo">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h2>Incident Reporter</h2>
+                <p>Citizen Reporting Solution</p>
             </div>
-            <input type="hidden" id="lat">
-            <input type="hidden" id="lng">
-            <div id="photoPreview" class="photo-preview"></div>
-            <button id="takePhotoBtn" class="btn-secondary">📸 Take Photo</button>
-            <button id="selectPhotoBtn" class="btn-secondary">🖼️ Gallery</button>
-            <input type="hidden" id="photoData">
-            <button id="submitBtn" class="btn-primary">Submit Incident</button>
+            <div id="loginStatus" class="status-message"></div>
+            <input type="text" id="username" placeholder="Username" autocomplete="off">
+            <input type="password" id="password" placeholder="Password">
+            <button id="loginBtn" class="btn-primary">Login</button>
+            <button id="guestBtn" class="btn-secondary">Continue as Guest</button>
         </div>
 
-        <div id="myincidentsTab" class="tab-content">
-            <div id="myIncidentsList"></div>
+        <!-- ========== MAIN APP SCREEN ========== -->
+        <div id="appScreen" class="screen">
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <div class="tab active" data-tab="incidents">
+                    <i class="fas fa-list"></i>
+                    <span>Incidents</span>
+                </div>
+                <div class="tab" data-tab="report">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Report</span>
+                </div>
+                <div class="tab" data-tab="myincidents">
+                    <i class="fas fa-user"></i>
+                    <span>My Reports</span>
+                </div>
+            </div>
+
+            <!-- ===== INCIDENTS TAB ===== -->
+            <div id="incidentsTab" class="tab-content active">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search incidents...">
+                </div>
+                <div id="categoryFilters" class="filters"></div>
+                <div id="incidentsList" class="incidents-list">
+                    <div class="loading">Loading incidents...</div>
+                </div>
+            </div>
+
+            <!-- ===== REPORT TAB ===== -->
+            <div id="reportTab" class="tab-content">
+                <form id="reportForm">
+                    <label>Incident Type</label>
+                    <select id="incidentCategory" required>
+                        <option value="">Select type</option>
+                        <option value="Accident">🚗 Accident</option>
+                        <option value="Fighting">👊 Fighting</option>
+                        <option value="Rioting">🔥 Rioting</option>
+                        <option value="Fire">🪵 Fire</option>
+                        <option value="Other">📌 Other</option>
+                    </select>
+                    
+                    <label>Description</label>
+                    <textarea id="incidentDesc" rows="4" placeholder="Describe what happened..." required></textarea>
+                    
+                    <label>Location</label>
+                    <div class="location-box" id="locationBox">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="locationStatus">Tap to get location</span>
+                    </div>
+                    <input type="hidden" id="lat">
+                    <input type="hidden" id="lng">
+                    
+                    <label>Photo</label>
+                    <div id="photoPreview" class="photo-preview"></div>
+                    <div class="photo-buttons">
+                        <button type="button" id="takePhotoBtn" class="btn-secondary"><i class="fas fa-camera"></i> Take Photo</button>
+                        <button type="button" id="selectPhotoBtn" class="btn-secondary"><i class="fas fa-image"></i> Gallery</button>
+                    </div>
+                    <input type="hidden" id="photoData">
+                    
+                    <button type="button" id="submitBtn" class="btn-primary">Submit Incident</button>
+                </form>
+            </div>
+
+            <!-- ===== MY INCIDENTS TAB ===== -->
+            <div id="myincidentsTab" class="tab-content">
+                <div id="myIncidentsList" class="incidents-list">
+                    <div class="loading">Loading your reports...</div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
-<script src="cordova.js"></script>
-<script src="js/app.js"></script>
+
+    <script src="cordova.js"></script>
+    <script src="js/app.js"></script>
 </body>
-</html>
+                    </html>
