@@ -7,9 +7,6 @@ let userLocation = null;
 let map = null;
 let mapMarkers = [];
 let chartInstances = {};
-let mediaRecorder = null;
-let audioChunks = [];
-let speechRecognition = null;
 let refreshInterval = null;
 
 // ========== INITIALIZATION ==========
@@ -17,21 +14,23 @@ document.addEventListener('deviceready', onDeviceReady, false);
 window.addEventListener('load', onPageLoad);
 
 function onPageLoad() {
+    // Skip onboarding by default - go straight to login
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
         if (splash) splash.style.display = 'none';
         checkFirstLaunch();
-    }, 3000);
+    }, 1500);
 }
 
 function onDeviceReady() {
-    console.log('ðŸš€ Device Ready - Ultimate Incident Reporter');
+    console.log('Device Ready - Ultimate Incident Reporter');
     initializeApp();
     setupEventListeners();
     loadAllData();
     checkLogin();
     startLiveUpdates();
-    setupSpeechRecognition();
 }
 
 function initializeApp() {
@@ -39,138 +38,24 @@ function initializeApp() {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
         document.body.classList.add('light-mode');
-        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
     }
     
     // Load notification preference
     const notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
-    document.getElementById('notificationsToggle').checked = notificationsEnabled;
-    
-    // Initialize map if needed
-    if (document.getElementById('incidentMap')) {
-        initMap();
-    }
-    
-    // Start checking for updates
-    startPeriodicRefresh();
+    const notifToggle = document.getElementById('notificationsToggle');
+    if (notifToggle) notifToggle.checked = notificationsEnabled;
 }
 
-function setupEventListeners() {
-    // Auth
-    document.getElementById('loginBtn')?.addEventListener('click', login);
-    document.getElementById('registerBtn')?.addEventListener('click', () => showScreen('registerScreen'));
-    document.getElementById('registerSubmitBtn')?.addEventListener('click', registerUser);
-    document.getElementById('backToLoginBtn')?.addEventListener('click', () => showScreen('loginScreen'));
-    document.getElementById('guestBtn')?.addEventListener('click', guestLogin);
-    document.getElementById('logoutBtn')?.addEventListener('click', logout);
-    
-    // Theme
-    document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
-    
-    // User dropdown
-    document.getElementById('userAvatar')?.addEventListener('click', toggleDropdown);
-    
-    // Report form
-    document.getElementById('submitBtn')?.addEventListener('click', submitIncident);
-    document.getElementById('takePhotoBtn')?.addEventListener('click', takePhoto);
-    document.getElementById('selectPhotoBtn')?.addEventListener('click', selectPhoto);
-    document.getElementById('recordVideoBtn')?.addEventListener('click', recordVideo);
-    document.getElementById('recordAudioBtn')?.addEventListener('click', recordAudio);
-    document.getElementById('locationCard')?.addEventListener('click', getLocation);
-    document.getElementById('refreshLocationBtn')?.addEventListener('click', getLocation);
-    
-    // Category radio buttons
-    document.querySelectorAll('.category-option').forEach(opt => {
-        opt.addEventListener('click', function() {
-            document.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
-            this.querySelector('input').checked = true;
-        });
-    });
-    
-    // Tags input
-    document.getElementById('tagsInput')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const tag = this.value.trim();
-            if (tag) addTag(tag);
-            this.value = '';
-        }
-    });
-    
-    // Search and filter
-    document.getElementById('searchInput')?.addEventListener('input', searchIncidents);
-    document.getElementById('voiceSearchBtn')?.addEventListener('click', startVoiceSearch);
-    
-    // Tabs
-    document.querySelectorAll('.tab-item').forEach(tab => {
-        tab.addEventListener('click', () => switchTab(tab.getAttribute('data-tab')));
-    });
-    
-    // Sort buttons
-    document.querySelectorAll('.sort-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentSort = btn.getAttribute('data-sort');
-            loadIncidents();
-        });
-    });
-    
-    // FAB and bottom sheet
-    document.getElementById('fabBtn')?.addEventListener('click', toggleBottomSheet);
-    document.querySelector('.sheet-overlay')?.addEventListener('click', toggleBottomSheet);
-    
-    // Sheet actions
-    document.querySelectorAll('.sheet-action').forEach(action => {
-        action.addEventListener('click', () => {
-            toggleBottomSheet();
-            const actionType = action.getAttribute('data-action');
-            if (actionType === 'report') switchTab('report');
-            else if (actionType === 'emergency') triggerEmergencySOS();
-            else if (actionType === 'nearby') showNearbyAlerts();
-            else if (actionType === 'share') shareApp();
-        });
-    });
-    
-    // Map controls
-    document.getElementById('zoomToUserBtn')?.addEventListener('click', zoomToUser);
-    document.getElementById('heatmapToggleBtn')?.addEventListener('click', toggleHeatmap);
-    document.getElementById('refreshMapBtn')?.addEventListener('click', refreshMap);
-    
-    // Analytics
-    document.getElementById('analyticsTimeframe')?.addEventListener('change', updateAnalytics);
-    
-    // Settings
-    document.getElementById('notificationsToggle')?.addEventListener('change', (e) => {
-        localStorage.setItem('notificationsEnabled', e.target.checked);
-        showToast(`Notifications ${e.target.checked ? 'enabled' : 'disabled'}`, 'info');
-    });
-    
-    document.getElementById('privacyToggle')?.addEventListener('change', (e) => {
-        showToast(`Privacy mode ${e.target.checked ? 'on' : 'off'}`, 'info');
-    });
-    
-    document.getElementById('offlineToggle')?.addEventListener('change', (e) => {
-        if (e.target.checked) enableOfflineMode();
-        else disableOfflineMode();
-    });
-    
-    document.getElementById('changeAvatarBtn')?.addEventListener('click', changeAvatar);
-    
-    // Emergency SOS
-    document.getElementById('confirmSosBtn')?.addEventListener('click', sendEmergencyAlert);
-    document.getElementById('cancelSosBtn')?.addEventListener('click', () => closeModal('emergencyModal'));
-}
-
-// ========== ONBOARDING ==========
+// ========== ONBOARDING (Simplified & Working) ==========
 function checkFirstLaunch() {
     const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    if (!hasSeenOnboarding) {
+    if (hasSeenOnboarding === 'true') {
+        showScreen('loginScreen');
+    } else {
         showScreen('onboardingScreen');
         setupOnboarding();
-    } else {
-        showScreen('loginScreen');
     }
 }
 
@@ -181,35 +66,193 @@ function setupOnboarding() {
     const nextBtn = document.getElementById('onboardingNextBtn');
     const skipBtn = document.getElementById('onboardingSkipBtn');
     
+    if (!slides.length) {
+        showScreen('loginScreen');
+        return;
+    }
+    
     function showSlide(index) {
         slides.forEach((slide, i) => {
-            slide.classList.toggle('active', i === index);
-            dots[i]?.classList.toggle('active', i === index);
+            if (slide) slide.classList.toggle('active', i === index);
+            if (dots[i]) dots[i].classList.toggle('active', i === index);
         });
     }
     
-    nextBtn.addEventListener('click', () => {
-        if (currentSlide < slides.length - 1) {
-            currentSlide++;
-            showSlide(currentSlide);
-        } else {
+    if (nextBtn) {
+        nextBtn.onclick = () => {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                showSlide(currentSlide);
+            } else {
+                localStorage.setItem('hasSeenOnboarding', 'true');
+                showScreen('loginScreen');
+            }
+        };
+    }
+    
+    if (skipBtn) {
+        skipBtn.onclick = () => {
             localStorage.setItem('hasSeenOnboarding', 'true');
             showScreen('loginScreen');
-        }
+        };
+    }
+    
+    showSlide(0);
+}
+
+// ========== EVENT LISTENERS ==========
+function setupEventListeners() {
+    // Auth
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const registerSubmit = document.getElementById('registerSubmitBtn');
+    const backToLogin = document.getElementById('backToLoginBtn');
+    const guestBtn = document.getElementById('guestBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if (loginBtn) loginBtn.onclick = login;
+    if (registerBtn) registerBtn.onclick = () => showScreen('registerScreen');
+    if (registerSubmit) registerSubmit.onclick = registerUser;
+    if (backToLogin) backToLogin.onclick = () => showScreen('loginScreen');
+    if (guestBtn) guestBtn.onclick = guestLogin;
+    if (logoutBtn) logoutBtn.onclick = logout;
+    
+    // Theme
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) themeToggle.onclick = toggleTheme;
+    
+    // User dropdown
+    const userAvatar = document.getElementById('userAvatar');
+    if (userAvatar) userAvatar.onclick = toggleDropdown;
+    
+    // Report form
+    const submitBtn = document.getElementById('submitBtn');
+    const takePhoto = document.getElementById('takePhotoBtn');
+    const selectPhoto = document.getElementById('selectPhotoBtn');
+    const locationCard = document.getElementById('locationCard');
+    const refreshLocation = document.getElementById('refreshLocationBtn');
+    
+    if (submitBtn) submitBtn.onclick = submitIncident;
+    if (takePhoto) takePhoto.onclick = takePhoto;
+    if (selectPhoto) selectPhoto.onclick = selectPhoto;
+    if (locationCard) locationCard.onclick = getLocation;
+    if (refreshLocation) refreshLocation.onclick = getLocation;
+    
+    // Category radio buttons
+    document.querySelectorAll('.category-option').forEach(opt => {
+        opt.onclick = function() {
+            document.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+            const radio = this.querySelector('input');
+            if (radio) radio.checked = true;
+        };
     });
     
-    skipBtn.addEventListener('click', () => {
-        localStorage.setItem('hasSeenOnboarding', 'true');
-        showScreen('loginScreen');
+    // Tags input
+    const tagsInput = document.getElementById('tagsInput');
+    if (tagsInput) {
+        tagsInput.onkeypress = function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const tag = this.value.trim();
+                if (tag) addTag(tag);
+                this.value = '';
+            }
+        };
+    }
+    
+    // Search
+    const searchInput = document.getElementById('searchInput');
+    const voiceSearch = document.getElementById('voiceSearchBtn');
+    if (searchInput) searchInput.oninput = searchIncidents;
+    if (voiceSearch) voiceSearch.onclick = startVoiceSearch;
+    
+    // Tabs
+    document.querySelectorAll('.tab-item').forEach(tab => {
+        tab.onclick = () => switchTab(tab.getAttribute('data-tab'));
+    });
+    
+    // Sort buttons
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSort = btn.getAttribute('data-sort');
+            loadIncidents();
+        };
+    });
+    
+    // FAB and bottom sheet
+    const fabBtn = document.getElementById('fabBtn');
+    const sheetOverlay = document.querySelector('.sheet-overlay');
+    if (fabBtn) fabBtn.onclick = toggleBottomSheet;
+    if (sheetOverlay) sheetOverlay.onclick = toggleBottomSheet;
+    
+    // Sheet actions
+    document.querySelectorAll('.sheet-action').forEach(action => {
+        action.onclick = () => {
+            toggleBottomSheet();
+            const actionType = action.getAttribute('data-action');
+            if (actionType === 'report') switchTab('report');
+            else if (actionType === 'emergency') triggerEmergencySOS();
+            else if (actionType === 'nearby') showNearbyAlerts();
+            else if (actionType === 'share') shareApp();
+        };
+    });
+    
+    // Map controls
+    const zoomBtn = document.getElementById('zoomToUserBtn');
+    const heatmapBtn = document.getElementById('heatmapToggleBtn');
+    const refreshMapBtn = document.getElementById('refreshMapBtn');
+    if (zoomBtn) zoomBtn.onclick = zoomToUser;
+    if (heatmapBtn) heatmapBtn.onclick = toggleHeatmap;
+    if (refreshMapBtn) refreshMapBtn.onclick = refreshMap;
+    
+    // Analytics
+    const timeframeSelect = document.getElementById('analyticsTimeframe');
+    if (timeframeSelect) timeframeSelect.onchange = updateAnalytics;
+    
+    // Settings
+    const notifToggle = document.getElementById('notificationsToggle');
+    const privacyToggle = document.getElementById('privacyToggle');
+    const offlineToggle = document.getElementById('offlineToggle');
+    const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+    
+    if (notifToggle) notifToggle.onchange = (e) => {
+        localStorage.setItem('notificationsEnabled', e.target.checked);
+        showToast(`Notifications ${e.target.checked ? 'enabled' : 'disabled'}`, 'info');
+    };
+    if (privacyToggle) privacyToggle.onchange = (e) => {
+        showToast(`Privacy mode ${e.target.checked ? 'on' : 'off'}`, 'info');
+    };
+    if (offlineToggle) offlineToggle.onchange = (e) => {
+        if (e.target.checked) enableOfflineMode();
+        else disableOfflineMode();
+    };
+    if (changeAvatarBtn) changeAvatarBtn.onclick = changeAvatar;
+    
+    // Emergency SOS
+    const confirmSos = document.getElementById('confirmSosBtn');
+    const cancelSos = document.getElementById('cancelSosBtn');
+    if (confirmSos) confirmSos.onclick = sendEmergencyAlert;
+    if (cancelSos) cancelSos.onclick = () => closeModal('emergencyModal');
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('userDropdown');
+        const avatar = document.getElementById('userAvatar');
+        if (dropdown && avatar && !avatar.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
     });
 }
 
 // ========== AUTHENTICATION ==========
 function registerUser() {
-    const username = document.getElementById('regUsername').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const confirm = document.getElementById('regConfirmPassword').value;
+    const username = document.getElementById('regUsername')?.value.trim();
+    const email = document.getElementById('regEmail')?.value.trim();
+    const password = document.getElementById('regPassword')?.value;
+    const confirm = document.getElementById('regConfirmPassword')?.value;
     
     if (!username || !email || !password) {
         showRegisterStatus('Please fill all fields', 'error');
@@ -245,8 +288,8 @@ function registerUser() {
 }
 
 function login() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
+    const username = document.getElementById('username')?.value.trim();
+    const password = document.getElementById('password')?.value;
     
     const user = allUsers.find(u => u.username === username && u.password === password);
     
@@ -260,8 +303,9 @@ function login() {
         loadMyIncidents();
         updateAnalytics();
         updateAchievements();
+        if (map) updateMapMarkers();
     } else {
-        showStatus('Invalid username or password', 'error');
+        showToast('Invalid username or password', 'error');
     }
 }
 
@@ -269,7 +313,8 @@ function guestLogin() {
     currentUser = {
         id: 'guest_' + Date.now(),
         username: 'Guest',
-        isGuest: true
+        isGuest: true,
+        points: 0
     };
     updateUIForUser();
     showScreen('appScreen');
@@ -280,27 +325,40 @@ function logout() {
     currentUser = null;
     localStorage.removeItem('currentUser');
     showScreen('loginScreen');
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
+    const usernameField = document.getElementById('username');
+    const passwordField = document.getElementById('password');
+    if (usernameField) usernameField.value = '';
+    if (passwordField) passwordField.value = '';
     showToast('Logged out successfully', 'info');
 }
 
 function updateUIForUser() {
-    document.getElementById('currentUserName').innerText = currentUser.username;
-    document.getElementById('userPoints').innerText = currentUser.points || 0;
-    document.getElementById('profileUsername').innerText = currentUser.username;
-    document.getElementById('profileJoinDate').innerText = `Member since ${new Date(currentUser.joinDate).toLocaleDateString()}`;
+    const userNameSpan = document.getElementById('currentUserName');
+    const userPointsSpan = document.getElementById('userPoints');
+    const profileUsername = document.getElementById('profileUsername');
+    const profileJoinDate = document.getElementById('profileJoinDate');
+    
+    if (userNameSpan) userNameSpan.innerText = currentUser?.username || 'User';
+    if (userPointsSpan) userPointsSpan.innerText = currentUser?.points || 0;
+    if (profileUsername) profileUsername.innerText = currentUser?.username || 'User';
+    if (profileJoinDate && currentUser?.joinDate) {
+        profileJoinDate.innerText = `Member since ${new Date(currentUser.joinDate).toLocaleDateString()}`;
+    }
 }
 
 // ========== DATA MANAGEMENT ==========
 function loadAllData() {
     const savedIncidents = localStorage.getItem('incidents');
-    if (savedIncidents) allIncidents = JSON.parse(savedIncidents);
-    else loadDemoIncidents();
+    if (savedIncidents) {
+        allIncidents = JSON.parse(savedIncidents);
+    } else {
+        loadDemoIncidents();
+    }
     
     const savedUsers = localStorage.getItem('users');
-    if (savedUsers) allUsers = JSON.parse(savedUsers);
-    else {
+    if (savedUsers) {
+        allUsers = JSON.parse(savedUsers);
+    } else {
         allUsers = [{
             id: 'admin1',
             username: 'Admin',
@@ -309,7 +367,8 @@ function loadAllData() {
             joinDate: new Date().toISOString(),
             points: 100,
             reports: 5,
-            likes: 20
+            likes: 20,
+            achievements: ['first_report']
         }];
         localStorage.setItem('users', JSON.stringify(allUsers));
     }
@@ -320,7 +379,7 @@ function loadDemoIncidents() {
         {
             id: 1,
             title: 'Multi-Vehicle Accident on Main Highway',
-            desc: 'Three cars collided near Exit 45. Multiple injuries reported. Police and ambulance on scene. Traffic backed up for 2 miles.',
+            desc: 'Three cars collided near Exit 45. Multiple injuries reported. Police and ambulance on scene.',
             category: 'Accident',
             severity: 'High',
             lat: 6.5244,
@@ -330,12 +389,12 @@ function loadDemoIncidents() {
             userId: 'demo1',
             likes: 24,
             comments: 5,
-            tags: ['traffic', 'accident', 'police']
+            tags: ['traffic', 'accident']
         },
         {
             id: 2,
             title: 'Large Fight Outside Nightclub',
-            desc: 'Group of 10+ people fighting. Security trying to intervene. Police en route.',
+            desc: 'Group of people fighting. Security trying to intervene.',
             category: 'Fighting',
             severity: 'Medium',
             lat: 6.5225,
@@ -345,12 +404,12 @@ function loadDemoIncidents() {
             userId: 'demo2',
             likes: 12,
             comments: 3,
-            tags: ['nightclub', 'fight', 'security']
+            tags: ['nightclub', 'fight']
         },
         {
             id: 3,
             title: 'Protest Turns Violent Downtown',
-            desc: 'Peaceful protest escalated. Objects being thrown. Police in riot gear.',
+            desc: 'Peaceful protest escalated. Objects being thrown.',
             category: 'Rioting',
             severity: 'Critical',
             lat: 6.5312,
@@ -360,7 +419,7 @@ function loadDemoIncidents() {
             userId: 'demo3',
             likes: 56,
             comments: 12,
-            tags: ['protest', 'riot', 'police']
+            tags: ['protest', 'riot']
         }
     ];
     localStorage.setItem('incidents', JSON.stringify(allIncidents));
@@ -373,20 +432,20 @@ function loadIncidents() {
     
     let filtered = [...allIncidents];
     
-    // Apply search
     const searchTerm = document.getElementById('searchInput')?.value.toLowerCase();
     if (searchTerm) {
         filtered = filtered.filter(i => 
             i.title.toLowerCase().includes(searchTerm) || 
             i.desc.toLowerCase().includes(searchTerm) ||
-            i.tags?.some(t => t.toLowerCase().includes(searchTerm))
+            (i.tags && i.tags.some(t => t.toLowerCase().includes(searchTerm)))
         );
     }
     
-    // Apply sorting
-    if (currentSort === 'newest') filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
-    else if (currentSort === 'popular') filtered.sort((a,b) => (b.likes || 0) - (a.likes || 0));
-    else if (currentSort === 'nearby' && userLocation) {
+    if (currentSort === 'newest') {
+        filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+    } else if (currentSort === 'popular') {
+        filtered.sort((a,b) => (b.likes || 0) - (a.likes || 0));
+    } else if (currentSort === 'nearby' && userLocation) {
         filtered.sort((a,b) => {
             const distA = getDistance(userLocation.lat, userLocation.lng, a.lat, a.lng);
             const distB = getDistance(userLocation.lat, userLocation.lng, b.lat, b.lng);
@@ -403,27 +462,24 @@ function loadIncidents() {
     filtered.forEach(inc => {
         const date = new Date(inc.date);
         const timeAgo = getTimeAgo(date);
-        const severityColor = getSeverityColor(inc.severity);
         
         html += `
             <div class="incident-card" data-id="${inc.id}">
                 <div class="card-header">
                     <span class="category-badge" style="background: ${getCategoryColor(inc.category)}">${inc.category}</span>
-                    <span class="severity-badge" style="background: ${severityColor}">${inc.severity || 'Medium'}</span>
+                    <span class="severity-badge" style="background: ${getSeverityColor(inc.severity)}">${inc.severity || 'Medium'}</span>
                 </div>
                 <h3>${escapeHtml(inc.title)}</h3>
                 <p>${escapeHtml(inc.desc.substring(0, 120))}${inc.desc.length > 120 ? '...' : ''}</p>
                 <div class="card-meta">
                     <span><i class="fas fa-user"></i> ${escapeHtml(inc.reportedBy)}</span>
                     <span><i class="fas fa-clock"></i> ${timeAgo}</span>
-                    <span><i class="fas fa-map-marker-alt"></i> ${inc.lat.toFixed(4)}, ${inc.lng.toFixed(4)}</span>
                 </div>
                 <div class="card-tags">
-                    ${inc.tags?.map(tag => `<span class="tag-mini">#${tag}</span>`).join('') || ''}
+                    ${inc.tags?.map(tag => `<span class="tag-mini">#${escapeHtml(tag)}</span>`).join('') || ''}
                 </div>
                 <div class="card-actions">
                     <button class="like-btn" data-id="${inc.id}"><i class="fas fa-heart"></i> ${inc.likes || 0}</button>
-                    <button class="comment-btn" data-id="${inc.id}"><i class="fas fa-comment"></i> ${inc.comments || 0}</button>
                     <button class="share-btn" data-id="${inc.id}"><i class="fas fa-share"></i> Share</button>
                     <button class="navigate-btn" data-lat="${inc.lat}" data-lng="${inc.lng}"><i class="fas fa-directions"></i> Navigate</button>
                 </div>
@@ -433,18 +489,14 @@ function loadIncidents() {
     
     listDiv.innerHTML = html;
     
-    // Attach event listeners
     document.querySelectorAll('.like-btn').forEach(btn => {
-        btn.addEventListener('click', () => likeIncident(parseInt(btn.dataset.id)));
+        btn.onclick = () => likeIncident(parseInt(btn.dataset.id));
     });
     document.querySelectorAll('.share-btn').forEach(btn => {
-        btn.addEventListener('click', () => shareIncident(parseInt(btn.dataset.id)));
+        btn.onclick = () => shareIncident(parseInt(btn.dataset.id));
     });
     document.querySelectorAll('.navigate-btn').forEach(btn => {
-        btn.addEventListener('click', () => navigateToLocation(btn.dataset.lat, btn.dataset.lng));
-    });
-    document.querySelectorAll('.comment-btn').forEach(btn => {
-        btn.addEventListener('click', () => showComments(parseInt(btn.dataset.id)));
+        btn.onclick = () => navigateToLocation(btn.dataset.lat, btn.dataset.lng);
     });
     
     updateLiveStats();
@@ -456,9 +508,13 @@ function loadMyIncidents() {
     
     const myIncidents = allIncidents.filter(i => i.userId === currentUser.id);
     
-    document.getElementById('profileReports').innerText = myIncidents.length;
-    document.getElementById('profileLikes').innerText = myIncidents.reduce((sum, i) => sum + (i.likes || 0), 0);
-    document.getElementById('profilePoints').innerText = currentUser.points || 0;
+    const profileReports = document.getElementById('profileReports');
+    const profileLikes = document.getElementById('profileLikes');
+    const profilePoints = document.getElementById('profilePoints');
+    
+    if (profileReports) profileReports.innerText = myIncidents.length;
+    if (profileLikes) profileLikes.innerText = myIncidents.reduce((sum, i) => sum + (i.likes || 0), 0);
+    if (profilePoints) profilePoints.innerText = currentUser.points || 0;
     
     if (myIncidents.length === 0) {
         myList.innerHTML = '<div class="no-results">You haven\'t reported any incidents yet</div>';
@@ -484,13 +540,15 @@ function loadMyIncidents() {
 
 // ========== SUBMIT INCIDENT ==========
 function submitIncident() {
-    const category = document.querySelector('input[name="category"]:checked')?.value;
-    const title = document.getElementById('incidentTitle').value.trim();
-    const desc = document.getElementById('incidentDesc').value.trim();
-    const severity = document.getElementById('severitySlider').value;
-    const lat = document.getElementById('lat').value;
-    const lng = document.getElementById('lng').value;
-    const mediaData = document.getElementById('mediaData').value;
+    const selectedCat = document.querySelector('input[name="category"]:checked');
+    const category = selectedCat?.value;
+    const title = document.getElementById('incidentTitle')?.value.trim();
+    const desc = document.getElementById('incidentDesc')?.value.trim();
+    const severitySlider = document.getElementById('severitySlider');
+    const severity = severitySlider ? severitySlider.value : '2';
+    const lat = document.getElementById('lat')?.value;
+    const lng = document.getElementById('lng')?.value;
+    const mediaData = document.getElementById('mediaData')?.value;
     const tags = getTags();
     
     if (!category || !title || !desc) {
@@ -505,24 +563,21 @@ function submitIncident() {
         title: title,
         desc: desc,
         category: category,
-        severity: severityMap[severity],
+        severity: severityMap[severity] || 'Medium',
         lat: parseFloat(lat) || 6.5244,
         lng: parseFloat(lng) || 3.3792,
         date: new Date().toISOString(),
         reportedBy: currentUser?.username || 'Anonymous',
         userId: currentUser?.id || 'guest',
         media: mediaData || null,
-        mediaType: document.getElementById('mediaType').value || null,
         likes: 0,
         comments: 0,
-        tags: tags,
-        views: 0
+        tags: tags
     };
     
     allIncidents.unshift(newIncident);
     localStorage.setItem('incidents', JSON.stringify(allIncidents));
     
-    // Award points
     if (currentUser && !currentUser.isGuest) {
         currentUser.points = (currentUser.points || 0) + 10;
         currentUser.reports = (currentUser.reports || 0) + 1;
@@ -534,29 +589,34 @@ function submitIncident() {
         checkAchievements();
     }
     
-    // Send notification
     sendPushNotification(`New ${category} incident reported nearby!`);
     showToast('âœ… Incident reported! +10 points!', 'success');
     
     // Reset form
-    document.getElementById('reportForm').reset();
-    document.getElementById('mediaPreview').innerHTML = '';
-    document.getElementById('tagsContainer').innerHTML = '';
-    document.getElementById('locationPreview').innerHTML = '';
+    const reportForm = document.getElementById('reportForm');
+    if (reportForm) reportForm.reset();
+    const mediaPreview = document.getElementById('mediaPreview');
+    if (mediaPreview) mediaPreview.innerHTML = '';
+    const tagsContainer = document.getElementById('tagsContainer');
+    if (tagsContainer) tagsContainer.innerHTML = '';
+    const locationPreview = document.getElementById('locationPreview');
+    if (locationPreview) locationPreview.innerHTML = '';
+    
+    document.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
     
     loadIncidents();
-    updateMapMarkers();
+    if (map) updateMapMarkers();
     updateAnalytics();
     
-    if (currentUser && !currentUser.isGuest) {
-        loadMyIncidents();
-    }
+    if (currentUser && !currentUser.isGuest) loadMyIncidents();
     
     switchTab('feed');
 }
 
 // ========== MAP FEATURES ==========
 function initMap() {
+    if (typeof L === 'undefined') return;
+    
     map = L.map('incidentMap').setView([6.5244, 3.3792], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'Â© OpenStreetMap contributors'
@@ -566,7 +626,7 @@ function initMap() {
 }
 
 function updateMapMarkers() {
-    if (!map) return;
+    if (!map || typeof L === 'undefined') return;
     
     mapMarkers.forEach(marker => map.removeLayer(marker));
     mapMarkers = [];
@@ -578,34 +638,21 @@ function updateMapMarkers() {
             fillColor: color,
             color: '#fff',
             weight: 2,
-            opacity: 1,
             fillOpacity: 0.8
         }).addTo(map);
         
         marker.bindPopup(`
-            <b>${incident.title}</b><br>
+            <b>${escapeHtml(incident.title)}</b><br>
             ${incident.category}<br>
             ${new Date(incident.date).toLocaleString()}
         `);
-        
-        marker.on('click', () => {
-            document.getElementById('selectedIncidentInfo').innerHTML = `
-                <div class="selected-info-content">
-                    <h4>${incident.title}</h4>
-                    <p>${incident.desc}</p>
-                    <button onclick="navigateToLocation(${incident.lat}, ${incident.lng})">
-                        <i class="fas fa-directions"></i> Get Directions
-                    </button>
-                </div>
-            `;
-        });
         
         mapMarkers.push(marker);
     });
 }
 
 function zoomToUser() {
-    if (userLocation) {
+    if (userLocation && map) {
         map.setView([userLocation.lat, userLocation.lng], 15);
     } else {
         getLocation();
@@ -629,6 +676,8 @@ function navigateToLocation(lat, lng) {
 // ========== LOCATION ==========
 function getLocation() {
     const statusSpan = document.getElementById('locationStatus');
+    if (!statusSpan) return;
+    
     statusSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
     
     if (navigator.geolocation) {
@@ -638,25 +687,22 @@ function getLocation() {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
-                document.getElementById('lat').value = userLocation.lat;
-                document.getElementById('lng').value = userLocation.lng;
+                const latField = document.getElementById('lat');
+                const lngField = document.getElementById('lng');
+                if (latField) latField.value = userLocation.lat;
+                if (lngField) lngField.value = userLocation.lng;
                 statusSpan.innerHTML = '<i class="fas fa-check-circle"></i> Location captured!';
                 
-                // Reverse geocoding
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLocation.lat}&lon=${userLocation.lng}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        document.getElementById('locationPreview').innerHTML = `
-                            <i class="fas fa-location-dot"></i> 
-                            ${data.display_name?.substring(0, 100) || 'Address found'}
-                        `;
-                    })
-                    .catch(() => {});
+                // Simple location preview
+                const locationPreview = document.getElementById('locationPreview');
+                if (locationPreview) {
+                    locationPreview.innerHTML = `<i class="fas fa-location-dot"></i> Lat: ${userLocation.lat.toFixed(4)}, Lng: ${userLocation.lng.toFixed(4)}`;
+                }
             },
             error => {
                 statusSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Using default location';
-                document.getElementById('lat').value = '6.5244';
-                document.getElementById('lng').value = '3.3792';
+                if (latField) latField.value = '6.5244';
+                if (lngField) lngField.value = '3.3792';
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );
@@ -670,12 +716,15 @@ function takePhoto() {
     if (navigator.camera) {
         navigator.camera.getPicture(
             imageData => {
-                document.getElementById('mediaData').value = imageData;
-                document.getElementById('mediaType').value = 'photo';
-                document.getElementById('mediaPreview').innerHTML = `
-                    <img src="data:image/jpeg;base64,${imageData}">
-                    <button class="remove-media" onclick="document.getElementById('mediaPreview').innerHTML=''"><i class="fas fa-times"></i></button>
-                `;
+                const mediaData = document.getElementById('mediaData');
+                const mediaType = document.getElementById('mediaType');
+                const mediaPreview = document.getElementById('mediaPreview');
+                if (mediaData) mediaData.value = imageData;
+                if (mediaType) mediaType.value = 'photo';
+                if (mediaPreview) {
+                    mediaPreview.innerHTML = `<img src="data:image/jpeg;base64,${imageData}"><button class="remove-media" onclick="this.parentElement.innerHTML=''"><i class="fas fa-times"></i></button>`;
+                }
+                showToast('Photo captured!', 'success');
             },
             err => showToast('Camera error', 'error'),
             {
@@ -695,12 +744,15 @@ function selectPhoto() {
     if (navigator.camera) {
         navigator.camera.getPicture(
             imageData => {
-                document.getElementById('mediaData').value = imageData;
-                document.getElementById('mediaType').value = 'photo';
-                document.getElementById('mediaPreview').innerHTML = `
-                    <img src="data:image/jpeg;base64,${imageData}">
-                    <button class="remove-media" onclick="document.getElementById('mediaPreview').innerHTML=''"><i class="fas fa-times"></i></button>
-                `;
+                const mediaData = document.getElementById('mediaData');
+                const mediaType = document.getElementById('mediaType');
+                const mediaPreview = document.getElementById('mediaPreview');
+                if (mediaData) mediaData.value = imageData;
+                if (mediaType) mediaType.value = 'photo';
+                if (mediaPreview) {
+                    mediaPreview.innerHTML = `<img src="data:image/jpeg;base64,${imageData}"><button class="remove-media" onclick="this.parentElement.innerHTML=''"><i class="fas fa-times"></i></button>`;
+                }
+                showToast('Photo selected!', 'success');
             },
             err => showToast('Gallery error', 'error'),
             {
@@ -709,21 +761,16 @@ function selectPhoto() {
                 sourceType: Camera.PictureSourceType.PHOTOLIBRARY
             }
         );
+    } else {
+        showToast('Gallery will work in installed app', 'info');
     }
-}
-
-function recordVideo() {
-    showToast('Video recording - tap again to stop', 'info');
-    // Implementation would use cordova-plugin-media-capture
-}
-
-function recordAudio() {
-    showToast('Audio note feature coming soon', 'info');
 }
 
 // ========== TAGS SYSTEM ==========
 function addTag(tag) {
     const tagsContainer = document.getElementById('tagsContainer');
+    if (!tagsContainer) return;
+    
     const tagElement = document.createElement('span');
     tagElement.className = 'tag';
     tagElement.innerHTML = `${escapeHtml(tag)} <i class="fas fa-times" onclick="this.parentElement.remove()"></i>`;
@@ -746,12 +793,6 @@ function likeIncident(incidentId) {
         localStorage.setItem('incidents', JSON.stringify(allIncidents));
         loadIncidents();
         showToast('You liked this incident!', 'success');
-        
-        // Award points for liking (optional)
-        if (currentUser && !currentUser.isGuest) {
-            currentUser.likes = (currentUser.likes || 0) + 1;
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        }
     }
 }
 
@@ -763,14 +804,10 @@ function shareIncident(incidentId) {
             text: incident.desc,
             url: `https://maps.google.com/?q=${incident.lat},${incident.lng}`
         });
-    } else {
-        navigator.clipboard.writeText(`Check out this incident: ${incident.title} - https://maps.google.com/?q=${incident.lat},${incident.lng}`);
+    } else if (incident) {
+        navigator.clipboard.writeText(`Check out: ${incident.title} - https://maps.google.com/?q=${incident.lat},${incident.lng}`);
         showToast('Link copied to clipboard!', 'success');
     }
-}
-
-function showComments(incidentId) {
-    showToast('Comments feature coming soon!', 'info');
 }
 
 // ========== ANALYTICS ==========
@@ -785,47 +822,28 @@ function updateAnalytics() {
     
     const filtered = allIncidents.filter(i => new Date(i.date) > startDate);
     
-    // Incident trend by category
     const categoryCount = {};
     filtered.forEach(i => {
         categoryCount[i.category] = (categoryCount[i.category] || 0) + 1;
     });
     
-    // Create charts
-    const ctx1 = document.getElementById('incidentChart')?.getContext('2d');
-    const ctx2 = document.getElementById('categoryChart')?.getContext('2d');
-    const ctx3 = document.getElementById('trendChart')?.getContext('2d');
-    
-    if (ctx1 && !chartInstances.incident) {
-        chartInstances.incident = new Chart(ctx1, {
-            type: 'line',
-            data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                datasets: [{
-                    label: 'Incidents',
-                    data: [5, 8, 12, 7, 15, 20, 10],
-                    borderColor: '#e94560',
-                    tension: 0.4,
-                    fill: true,
-                    backgroundColor: 'rgba(233,69,96,0.1)'
-                }]
-            },
-            options: { responsive: true }
-        });
-    }
-    
-    if (ctx2 && !chartInstances.category) {
-        chartInstances.category = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: Object.keys(categoryCount),
-                datasets: [{
-                    data: Object.values(categoryCount),
-                    backgroundColor: ['#ff9800', '#f44336', '#9c27b0', '#ff5722', '#4caf50', '#2196f3']
-                }]
-            },
-            options: { responsive: true }
-        });
+    // Simple chart display
+    const chartDiv = document.getElementById('categoryChart');
+    if (chartDiv && Object.keys(categoryCount).length > 0) {
+        let chartHtml = '<h4>Incidents by Category</h4>';
+        for (const [cat, count] of Object.entries(categoryCount)) {
+            const percent = Math.round((count / filtered.length) * 100);
+            chartHtml += `
+                <div style="margin: 8px 0;">
+                    <span style="display: inline-block; width: 100px;">${cat}</span>
+                    <div style="display: inline-block; width: 150px; background: #333; border-radius: 10px; overflow: hidden;">
+                        <div style="width: ${percent}%; background: #e94560; height: 20px;"></div>
+                    </div>
+                    <span style="margin-left: 10px;">${count} (${percent}%)</span>
+                </div>
+            `;
+        }
+        chartDiv.innerHTML = chartHtml;
     }
     
     // Leaderboard
@@ -841,7 +859,9 @@ function updateAnalytics() {
             <span>${count} reports</span>
         </div>
     `).join('');
-    document.getElementById('leaderboardList').innerHTML = leaderboardHtml;
+    
+    const leaderboardList = document.getElementById('leaderboardList');
+    if (leaderboardList) leaderboardList.innerHTML = leaderboardHtml || '<div>No data yet</div>';
     
     // Hotspots
     const hotspots = allIncidents.filter(i => {
@@ -855,7 +875,9 @@ function updateAnalytics() {
             <span>${i.title.substring(0, 30)}...</span>
         </div>
     `).join('');
-    document.getElementById('hotspotsList').innerHTML = hotspotsHtml;
+    
+    const hotspotsList = document.getElementById('hotspotsList');
+    if (hotspotsList) hotspotsList.innerHTML = hotspotsHtml || '<div>No recent hotspots</div>';
 }
 
 // ========== ACHIEVEMENTS ==========
@@ -863,9 +885,7 @@ const achievementsList = [
     { id: 'first_report', name: 'First Responder', icon: 'ðŸŽ–ï¸', requirement: 'Submit first report' },
     { id: '10_reports', name: 'Community Watch', icon: 'ðŸ‘ï¸', requirement: 'Submit 10 reports' },
     { id: '50_reports', name: 'Guardian Angel', icon: 'ðŸ‘¼', requirement: 'Submit 50 reports' },
-    { id: '100_likes', name: 'Influencer', icon: 'â­', requirement: 'Receive 100 likes' },
-    { id: 'night_owl', name: 'Night Watch', icon: 'ðŸ¦‰', requirement: 'Submit report after midnight' },
-    { id: 'early_bird', name: 'Morning Guardian', icon: 'ðŸ¦', requirement: 'Submit report before 6 AM' }
+    { id: '100_likes', name: 'Influencer', icon: 'â­', requirement: 'Receive 100 likes' }
 ];
 
 function updateAchievements() {
@@ -880,7 +900,8 @@ function updateAchievements() {
         </div>
     `).join('');
     
-    document.getElementById('achievementsList').innerHTML = html;
+    const achievementsDiv = document.getElementById('achievementsList');
+    if (achievementsDiv) achievementsDiv.innerHTML = html;
 }
 
 function checkAchievements() {
@@ -888,7 +909,6 @@ function checkAchievements() {
     
     const unlocked = currentUser.achievements || [];
     const reports = currentUser.reports || 0;
-    const likes = currentUser.likes || 0;
     
     if (reports >= 1 && !unlocked.includes('first_report')) {
         unlockAchievement('first_report');
@@ -898,9 +918,6 @@ function checkAchievements() {
     }
     if (reports >= 50 && !unlocked.includes('50_reports')) {
         unlockAchievement('50_reports');
-    }
-    if (likes >= 100 && !unlocked.includes('100_likes')) {
-        unlockAchievement('100_likes');
     }
 }
 
@@ -922,27 +939,22 @@ function unlockAchievement(achievementId) {
         
         const achievement = achievementsList.find(a => a.id === achievementId);
         showToast(`ðŸ† Achievement Unlocked: ${achievement.name}! +50 points!`, 'success');
-        sendPushNotification(`You earned the ${achievement.name} achievement!`);
     }
 }
 
 // ========== VOICE SEARCH ==========
-function setupSpeechRecognition() {
+function startVoiceSearch() {
     if ('webkitSpeechRecognition' in window) {
-        speechRecognition = new webkitSpeechRecognition();
-        speechRecognition.continuous = false;
-        speechRecognition.lang = 'en-US';
-        speechRecognition.onresult = (event) => {
+        const recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.lang = 'en-US';
+        recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
-            document.getElementById('searchInput').value = transcript;
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = transcript;
             searchIncidents();
         };
-    }
-}
-
-function startVoiceSearch() {
-    if (speechRecognition) {
-        speechRecognition.start();
+        recognition.start();
         showToast('Listening... speak your search', 'info');
     } else {
         showToast('Voice search not supported', 'error');
@@ -957,7 +969,7 @@ function triggerEmergencySOS() {
     
     const interval = setInterval(() => {
         countdown--;
-        timerDiv.innerText = countdown;
+        if (timerDiv) timerDiv.innerText = countdown;
         if (countdown === 0) {
             clearInterval(interval);
             sendEmergencyAlert();
@@ -968,15 +980,9 @@ function triggerEmergencySOS() {
 function sendEmergencyAlert() {
     closeModal('emergencyModal');
     
-    // Get current location
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
-            const message = `EMERGENCY SOS from ${currentUser?.username || 'Citizen'} at ${position.coords.latitude}, ${position.coords.longitude}`;
-            
-            // In production, send to backend/emergency services
             showToast('ðŸš¨ Emergency alert sent to authorities!', 'error');
-            
-            // Also share with nearby users (simulated)
             sendPushNotification('EMERGENCY: Someone needs help nearby!');
         });
     } else {
@@ -994,138 +1000,17 @@ function sendPushNotification(message) {
     } else {
         showToast(message, 'info');
     }
-    
-    updateNotificationBadge();
-}
-
-function updateNotificationBadge() {
-    const recentIncidents = allIncidents.filter(i => {
-        const date = new Date(i.date);
-        return (new Date() - date) < 86400000;
-    }).length;
-    
-    const badge = document.getElementById('notificationCount');
-    if (badge) {
-        badge.innerText = recentIncidents;
-        badge.style.display = recentIncidents > 0 ? 'flex' : 'none';
-    }
-    
-    if (recentIncidents > 0) {
-        document.querySelector('.fa-bell')?.classList.add('has-notification');
-    }
 }
 
 function showNearbyAlerts() {
     if (userLocation) {
         const nearby = allIncidents.filter(i => {
             const dist = getDistance(userLocation.lat, userLocation.lng, i.lat, i.lng);
-            return dist < 1; // Within 1km
+            return dist < 1;
         });
         showToast(`${nearby.length} incidents within 1km of you`, 'info');
     } else {
         getLocation();
-    }
-}
-
-// ========== UI HELPERS ==========
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const target = document.getElementById(screenId);
-    if (target) {
-        target.classList.add('active');
-        if (screenId === 'appScreen') {
-            loadIncidents();
-            updateAnalytics();
-            updateMapMarkers();
-        }
-    }
-}
-
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab-item[data-tab="${tabId}"]`)?.classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    
-    const targetTab = document.getElementById(tabId + 'Tab');
-    if (targetTab) {
-        targetTab.classList.add('active');
-        
-        if (tabId === 'feed') loadIncidents();
-        if (tabId === 'map') updateMapMarkers();
-        if (tabId === 'analytics') updateAnalytics();
-        if (tabId === 'profile') {
-            updateAchievements();
-            loadMyIncidents();
-        }
-    }
-    
-    toggleBottomSheet(false);
-}
-
-function toggleTheme() {
-    document.body.classList.toggle('light-mode');
-    const isLight = document.body.classList.contains('light-mode');
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    document.getElementById('themeToggle').innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-}
-
-function toggleDropdown() {
-    document.getElementById('userDropdown')?.classList.toggle('show');
-}
-
-function toggleBottomSheet(force) {
-    const sheet = document.getElementById('bottomSheet');
-    if (force === false || sheet.classList.contains('open')) {
-        sheet.classList.remove('open');
-    } else {
-        sheet.classList.add('open');
-    }
-}
-
-function openModal(modalId) {
-    document.getElementById(modalId)?.classList.add('open');
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId)?.classList.remove('open');
-}
-
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-        <span>${message}</span>
-    `;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
-
-function showStatus(message, type) {
-    showToast(message, type);
-}
-
-function showRegisterStatus(message, type) {
-    const div = document.getElementById('registerStatus');
-    if (div) {
-        div.innerText = message;
-        div.className = `status-message ${type}`;
-        setTimeout(() => div.innerText = '', 3000);
-    }
-}
-
-function changeAvatar() {
-    if (navigator.camera) {
-        navigator.camera.getPicture(
-            imageData => {
-                document.getElementById('profileAvatar').innerHTML = `<img src="data:image/jpeg;base64,${imageData}" class="avatar-img"><button id="changeAvatarBtn" class="avatar-edit"><i class="fas fa-camera"></i></button>`;
-                localStorage.setItem('userAvatar', imageData);
-                showToast('Profile picture updated!', 'success');
-            },
-            err => showToast('Error', 'error'),
-            { quality: 80, destinationType: Camera.DestinationType.DATA_URL, sourceType: Camera.PictureSourceType.PHOTOLIBRARY }
-        );
     }
 }
 
@@ -1141,18 +1026,132 @@ function shareApp() {
     }
 }
 
+// ========== UI HELPERS ==========
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.add('active');
+        if (screenId === 'appScreen') {
+            loadIncidents();
+            updateAnalytics();
+            if (map) updateMapMarkers();
+        }
+    }
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    const activeTab = document.querySelector(`.tab-item[data-tab="${tabId}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const targetTab = document.getElementById(tabId + 'Tab');
+    if (targetTab) {
+        targetTab.classList.add('active');
+        
+        if (tabId === 'feed') loadIncidents();
+        if (tabId === 'map' && !map) initMap();
+        if (tabId === 'map' && map) updateMapMarkers();
+        if (tabId === 'analytics') updateAnalytics();
+        if (tabId === 'profile') {
+            updateAchievements();
+            loadMyIncidents();
+        }
+        if (tabId === 'report') getLocation();
+    }
+    
+    const sheet = document.getElementById('bottomSheet');
+    if (sheet) sheet.classList.remove('open');
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    const isLight = document.body.classList.contains('light-mode');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    }
+}
+
+function toggleDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) dropdown.classList.toggle('show');
+}
+
+function toggleBottomSheet() {
+    const sheet = document.getElementById('bottomSheet');
+    if (sheet) sheet.classList.toggle('open');
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('open');
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('open');
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        alert(message);
+        return;
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+    toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function showRegisterStatus(message, type) {
+    const div = document.getElementById('registerStatus');
+    if (div) {
+        div.innerText = message;
+        div.className = `status-message ${type}`;
+        setTimeout(() => div.innerText = '', 3000);
+    }
+}
+
+function changeAvatar() {
+    if (navigator.camera) {
+        navigator.camera.getPicture(
+            imageData => {
+                const profileAvatar = document.getElementById('profileAvatar');
+                if (profileAvatar) {
+                    profileAvatar.innerHTML = `<img src="data:image/jpeg;base64,${imageData}" class="avatar-img"><button id="changeAvatarBtn" class="avatar-edit"><i class="fas fa-camera"></i></button>`;
+                    localStorage.setItem('userAvatar', imageData);
+                }
+                showToast('Profile picture updated!', 'success');
+            },
+            err => showToast('Error', 'error'),
+            { quality: 80, destinationType: Camera.DestinationType.DATA_URL, sourceType: Camera.PictureSourceType.PHOTOLIBRARY }
+        );
+    }
+}
+
 function searchIncidents() {
     loadIncidents();
 }
 
 function updateLiveStats() {
-    document.getElementById('liveIncidents').innerText = allIncidents.length;
-    document.getElementById('liveUsers').innerText = Math.floor(Math.random() * 50) + 10;
-    document.getElementById('userPoints').innerText = currentUser?.points || 0;
+    const liveIncidents = document.getElementById('liveIncidents');
+    const liveUsers = document.getElementById('liveUsers');
+    const userPoints = document.getElementById('userPoints');
+    
+    if (liveIncidents) liveIncidents.innerText = allIncidents.length;
+    if (liveUsers) liveUsers.innerText = Math.floor(Math.random() * 50) + 10;
+    if (userPoints) userPoints.innerText = currentUser?.points || 0;
 }
 
-function startPeriodicRefresh() {
-    refreshInterval = setInterval(() => {
+function startLiveUpdates() {
+    setInterval(() => {
         if (document.getElementById('feedTab')?.classList.contains('active')) {
             loadIncidents();
         }
@@ -1160,10 +1159,6 @@ function startPeriodicRefresh() {
             updateAnalytics();
         }
     }, 30000);
-}
-
-function startLiveUpdates() {
-    setInterval(updateNotificationBadge, 60000);
 }
 
 function enableOfflineMode() {
@@ -1240,8 +1235,10 @@ function checkLogin() {
         showScreen('appScreen');
         loadIncidents();
         updateAnalytics();
+        if (map) updateMapMarkers();
     }
 }
 
 // Make functions global for HTML onclick
 window.navigateToLocation = navigateToLocation;
+window.addTag = addTag;
