@@ -26,7 +26,7 @@ jobs:
       
       - name: Build App
         run: |
-          cordova create app com.incident.reporter "IncidentReporter"
+          cordova create app com.bincom.incidentapp "IncidentReporter"
           cp -r www/* app/www/
           cp config.xml app/
           cd app
@@ -36,5 +36,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: incident-app.apk
+          name: bincom-incident-app.apk
           path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
