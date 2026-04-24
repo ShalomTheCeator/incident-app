@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,17 +25,38 @@ jobs:
       - name: Install Cordova
         run: npm install -g cordova
       
-      - name: Build App
+      - name: Create Cordova Project and Build
         run: |
-          cordova create app com.bincom.incidentapp "IncidentReporter"
-          cp -r www/* app/www/
-          cp config.xml app/
-          cd app
+          # Create new Cordova project
+          cordova create MyApp com.bincom.incidentapp "IncidentReporter"
+          
+          # Copy your files
+          cp -r www/* MyApp/www/
+          cp config.xml MyApp/
+          
+          # Go into project
+          cd MyApp
+          
+          # Add Android platform
           cordova platform add android
+          
+          # Add plugins
+          cordova plugin add cordova-plugin-camera
+          cordova plugin add cordova-plugin-geolocation
+          cordova plugin add cordova-plugin-dialogs
+          cordova plugin add cordova-plugin-vibration
+          
+          # Build the APK
           cordova build android
+          
+          # List files to verify APK exists (debugging)
+          echo "Listing APK location:"
+          ls -la platforms/android/app/build/outputs/apk/debug/
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: bincom-incident-app.apk
-          path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          name: bincom-incident-app
+          path: |
+            MyApp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+            MyApp/platforms/android/app/build/outputs/apk/debug/app.apk
